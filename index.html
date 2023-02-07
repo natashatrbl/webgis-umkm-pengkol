@@ -1,0 +1,188 @@
+<html>
+    <head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>WebGIS UMKM Desa Pengkol, Boyolali</title>
+        <link
+        href="https://api.mapbox.com/mapbox-gl-js/v2.6.1/mapbox-gl.css" rel="stylesheet"/>
+      <script src="https://api.mapbox.com/mapbox-gl-js/v2.6.1/mapbox-gl.js"></script>
+      
+      <script src="https://api.mapbox.com/mapbox-gl-js/plugins/mapbox-gl-geocoder/v4.7.2/mapbox-gl-geocoder.min.js"></script>
+    <link
+      rel="stylesheet"
+      href="https://api.mapbox.com/mapbox-gl-js/plugins/mapbox-gl-geocoder/v4.7.2/mapbox-gl-geocoder.css"
+      type="text/css"/>
+      <style>
+          body{
+              height: 100%;
+              width: 100%;
+              margin: 0;
+          }
+          #map{
+              width: 100%; 
+              position: absolute;
+              top: 0; bottom:0;
+              height: 100%;
+          }
+          #menu{
+              position: absolute;
+              top: 0;
+              align-items: center;
+              background: linear-gradient(45deg, #3c8cd1, #61b930);
+              padding: 12px;
+              margin: 10px;
+              border-radius: 5px;
+              font-family: sans-serif;
+              color: #fffae9;
+          }
+      </style>
+    </head>
+
+    <body>
+        <div id="map"></div>
+        <div id="menu">
+            <!-- List of Mapbox-hosted public styles at -->
+            <!-- https://docs.mapbox.com/api/maps/styles/#mapbox-styles -->
+            <input id="satellite-v9" type="radio" name="rtoggle" value="satellite">
+            <label for="satellite-v9">Satellite</label>
+            <input id="light-v10" type="radio" name="rtoggle" value="light">
+            <label for="light-v10">Light</label>
+            <input id="dark-v10" type="radio" name="rtoggle" value="dark">
+            <label for="dark-v10">Dark</label>
+            <input id="streets-v11" type="radio" name="rtoggle" value="streets" checked="checked">
+            <label for="streets-v11">Streets</label>
+            <input id="outdoors-v11" type="radio" name="rtoggle" value="streets">
+            <label for="outdoors-v11">Outdoors</label>
+        </div>
+
+        <script type="text/javascript">
+            mapboxgl.accessToken = "pk.eyJ1IjoibmF0YXNoYXRyYmwiLCJhIjoiY2t6NWM2eTVtMGU5ZjJ1cGtweDkyd2hoMCJ9.2sEmFzTzZIr9qfTrc8cSbw";
+            
+            const map = new mapboxgl.Map({
+                container: "map", //Div untuk menyimpan peta,
+                style: "mapbox://styles/mapbox/streets-v11",
+                center: [106.774124, -6.121435],
+                zoom: 9,
+            });
+
+            const layerList = document.getElementById('menu');
+            const inputs = layerList.getElementsByTagName('input');
+            for (const input of inputs){
+                input.onclick = (layer) => {
+                    const layerId = layer.target.id;
+                    map.setStyle('mapbox://styles/mapbox/' + layerId);
+                };
+            }
+
+            map.addControl(
+                new mapboxgl.NavigationControl()
+            );
+
+            map.addControl(
+                new mapboxgl.GeolocateControl({
+                    positionOptions: {
+                        enableHighAccuracy: true
+                    },
+                    showUserHeading: true
+                    })
+            )
+            map.once('load',async function(){
+                let geolocate = document.getElementsByClassName("mapboxgl-ctrl-geolocate")
+                setTimeout(function(){
+                    geolocate[0].click();
+                },20);
+
+                getLayers();
+                getLayers2();
+            });
+
+            //Layer 1: Batas Admin
+            async function getOnlineData(){
+                let geojson;
+                await fetch("https://geoserver.mapid.io/layers_new/get_layer?api_key=174a057c2c8d4d52be98696775e1e619&layer_id=63cf56138580a632c0a3680c&project_id=63cf53998580a632c09f8d50",{method: "GET"})
+                .then((response) => response.json())
+                .then((data) => (geojson = data.geojson));
+                return geojson;
+            }
+            
+            async function getLayers(){
+                let geojson = await getOnlineData();
+                
+                map.addSource("src-batas-rt-desa-pengkol", {
+                    type : "geojson",
+                    data : geojson
+                });
+
+                map.addLayer({
+                    id : "lyr-batas-rt-desa-pengkol",
+                    type: "fill",
+                    source : "src-batas-rt-desa-pengkol",
+                    paint : {
+                        "fill-color": "grey",
+                        "fill-outline-color": "black",
+                        "fill-opacity": 0.5
+                    }
+                }, "lyr-survei-persebaran-umkm-desa-pengkol-boyolali");
+            }
+
+            //Layer 2 titik survei
+            async function getOnlineData2(){
+                let geojson;
+                await fetch("https://geoserver.mapid.io/layers_new/get_layer?api_key=174a057c2c8d4d52be98696775e1e619&layer_id=63cf53c18580a632c0a00e78&project_id=63cf53998580a632c09f8d50",{method: "GET"})
+                .then((response) => response.json())
+                .then((data) => (geojson = data.geojson));
+                return geojson;
+            }
+            
+            async function getLayers2(){
+                let geojson = await getOnlineData2();
+                
+                map.addSource("src-survei-persebaran-umkm-desa-pengkol-boyolali", {
+                    type : "geojson",
+                    data : geojson
+                });
+
+                map.addLayer({
+                    id : "lyr-survei-persebaran-umkm-desa-pengkol-boyolali",
+                    type: "circle",
+                    source : "src-survei-persebaran-umkm-desa-pengkol-boyolali",
+                    paint : {
+                        "circle-color": [
+                            "match", ["get", "Kategori_UMKM"],
+                            "Pabrik Tahu", "orange",
+                            "Batako", "pink",
+                            "Peternakan", "red",
+                            "Kebun/Green House", "green",
+                            "Toko Kelontong", "blue",
+                            /* other */ '#ccc'
+                        ],
+                        "circle-radius": 7
+                    }
+                });
+            }
+
+            map.on("click", "lyr-survei-persebaran-umkm-desa-pengkol-boyolali", (e) => {
+                const props = e.features[0].properties;
+                let nama_umkm = "<div>"+ props["Nama_Usaha_UMKM"] +"</div>";
+                let pemilik = "<div>"+ props["Nama_Pemilik_UMKM"] +"</div>";
+                let kategori = "<div>"+ props["Kategori_UMKM"] +"</div>";
+                let jam = "<div>"+ props["Jam_Buka"] +"</div>";
+                let hari = "<div>"+ props["Hari_Buka"] +"</div>";
+
+                new mapboxgl.Popup({className : 'new-mapboxgl-popup'})
+                .setLngLat([e.lngLat.lng, e.lngLat.lat])
+                .setHTML(
+                "<b>" + "Nama UMKM:" + "</b>" + nama_umkm +
+                "<b>" + "Nama Pemilik:"+ "</b>" + pemilik +
+                "<b>" + "Kategori UMKM:"+ "</b>" + kategori +
+                "<b>" + "Jam Buka:"+ "</b>" + jam +
+                "<b>" + "Hari Buka:"+ "</b>" + hari
+                )    
+                .addTo(map);
+            });
+            
+            
+        </script>
+    </body>
+</html>
